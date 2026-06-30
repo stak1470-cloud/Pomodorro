@@ -1,0 +1,1029 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Pomodoro Timer & Alarm Clock</title>
+  <style>
+    :root {
+      --mocha: #3B2314;
+      --espresso: #5C3317;
+      --latte: #8B6347;
+      --caramel: #C07840;
+      --cream: #FAF0E6;
+      --foam: #FFF8F0;
+      --steam: #EDE0D4;
+      --leaf: #4A7C59;
+      --leaflight: #6FAE80;
+      --font-sans: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      --radius: 10px;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--cream);
+      font-family: var(--font-sans);
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      padding: 2rem 1rem;
+    }
+
+    .app {
+      width: 100%;
+      max-width: 480px;
+      background: var(--foam);
+      border-radius: 20px;
+      overflow: hidden;
+      box-shadow: 0 8px 40px rgba(59,35,20,0.15);
+    }
+
+    /* Header */
+    .header {
+      background: var(--mocha);
+      padding: 1.25rem 1.5rem;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .header-icon { width: 44px; height: 44px; flex-shrink: 0; }
+    .steam-path1 { animation: rise1 2.8s ease-in-out infinite; transform-origin: 18px 11px; }
+    .steam-path2 { animation: rise2 2.8s ease-in-out infinite 0.6s; transform-origin: 22px 10px; }
+    .steam-path3 { animation: rise3 2.8s ease-in-out infinite 1.2s; transform-origin: 26px 11px; }
+    @keyframes rise1 {
+      0%   { transform: translateY(0) scaleX(1); opacity: 0; }
+      15%  { opacity: 0.8; }
+      60%  { transform: translateY(-5px) scaleX(1.2); opacity: 0.5; }
+      100% { transform: translateY(-9px) scaleX(0.9); opacity: 0; }
+    }
+    @keyframes rise2 {
+      0%   { transform: translateY(0) scaleX(1); opacity: 0; }
+      15%  { opacity: 0.7; }
+      60%  { transform: translateY(-6px) scaleX(0.85); opacity: 0.4; }
+      100% { transform: translateY(-10px) scaleX(1.1); opacity: 0; }
+    }
+    @keyframes rise3 {
+      0%   { transform: translateY(0) scaleX(1); opacity: 0; }
+      15%  { opacity: 0.75; }
+      60%  { transform: translateY(-5px) scaleX(1.1); opacity: 0.35; }
+      100% { transform: translateY(-8px) scaleX(0.95); opacity: 0; }
+    }
+    .header-title { font-size: 17px; font-weight: 600; color: var(--cream); letter-spacing: 0.3px; }
+    .header-sub { font-size: 12px; color: rgba(250,240,230,0.55); margin-top: 1px; }
+
+    /* Plant Strip */
+    .plant-strip {
+      background: var(--espresso);
+      height: 54px;
+      display: flex;
+      align-items: flex-end;
+      padding: 0 12px;
+      gap: 6px;
+      overflow: hidden;
+    }
+
+    /* Tabs */
+    .tabs {
+      display: flex;
+      border-bottom: 1px solid var(--steam);
+      background: var(--foam);
+    }
+    .tab-btn {
+      flex: 1;
+      padding: 13px 0;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--latte);
+      background: none;
+      border: none;
+      cursor: pointer;
+      letter-spacing: 0.3px;
+      border-bottom: 2px solid transparent;
+      transition: all 0.15s;
+      font-family: var(--font-sans);
+    }
+    .tab-btn.active {
+      color: var(--mocha);
+      border-bottom-color: var(--caramel);
+    }
+
+    /* Content */
+    .tab-content { display: none; padding: 1.5rem; }
+    .tab-content.active { display: block; }
+
+    /* ===== POMODORO ===== */
+    .mode-btns {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 1.5rem;
+    }
+    .mode-btn {
+      flex: 1;
+      padding: 8px 4px;
+      font-size: 12px;
+      font-weight: 500;
+      border-radius: var(--radius);
+      border: 1px solid var(--steam);
+      background: var(--cream);
+      color: var(--latte);
+      cursor: pointer;
+      font-family: var(--font-sans);
+      transition: all 0.15s;
+    }
+    .mode-btn.active {
+      background: var(--mocha);
+      color: var(--cream);
+      border-color: var(--mocha);
+    }
+
+    .timer-wrap {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      margin-bottom: 1.5rem;
+    }
+    .ring-svg { display: block; }
+    .ring-track { fill: none; stroke: var(--steam); stroke-width: 8; }
+
+    /* Stirring cup */
+    .stir-cup-wrap {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      margin-left: 16px;
+      flex-shrink: 0;
+    }
+    .stir-cup-wrap.active { display: flex; }
+    .stir-label {
+      font-size: 10px;
+      color: var(--latte);
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      margin-top: 6px;
+    }
+    .stir-svg { overflow: visible; }
+
+    @keyframes stirSpoon {
+      0%   { transform: rotate(-30deg); }
+      25%  { transform: rotate(30deg); }
+      50%  { transform: rotate(-30deg); }
+      75%  { transform: rotate(30deg); }
+      100% { transform: rotate(-30deg); }
+    }
+    @keyframes stirLiquid {
+      0%   { d: path("M10 22 Q22 20 34 22"); }
+      25%  { d: path("M10 21 Q22 24 34 21"); }
+      50%  { d: path("M10 22 Q22 20 34 22"); }
+      75%  { d: path("M10 21 Q22 24 34 21"); }
+      100% { d: path("M10 22 Q22 20 34 22"); }
+    }
+    @keyframes stirRipple1 {
+      0%,100% { transform: scaleX(1);   opacity: 0.5; }
+      50%      { transform: scaleX(0.6); opacity: 0.2; }
+    }
+    @keyframes stirRipple2 {
+      0%,100% { transform: scaleX(0.6); opacity: 0.2; }
+      50%      { transform: scaleX(1);   opacity: 0.5; }
+    }
+    .spoon-group {
+      transform-origin: 22px 26px;
+      animation: stirSpoon 1.4s ease-in-out infinite;
+    }
+    .ripple1 {
+      transform-origin: 22px 22px;
+      animation: stirRipple1 1.4s ease-in-out infinite;
+    }
+    .ripple2 {
+      transform-origin: 22px 25px;
+      animation: stirRipple2 1.4s ease-in-out infinite;
+    }
+    .stir-steam1 { animation: rise1 2.2s ease-in-out infinite; transform-origin: 16px 9px; }
+    .stir-steam2 { animation: rise2 2.2s ease-in-out infinite 0.5s; transform-origin: 22px 8px; }
+    .stir-steam3 { animation: rise3 2.2s ease-in-out infinite 1s; transform-origin: 28px 9px; }
+    .ring-prog {
+      fill: none;
+      stroke: var(--caramel);
+      stroke-width: 8;
+      stroke-linecap: round;
+      transition: stroke-dashoffset 1s linear;
+      transform: rotate(-90deg);
+      transform-origin: center;
+    }
+    .timer-display {
+      font-size: 52px;
+      font-weight: 300;
+      color: var(--mocha);
+      font-variant-numeric: tabular-nums;
+      letter-spacing: -2px;
+      margin-top: -130px;
+      margin-bottom: 6px;
+      position: relative;
+      z-index: 1;
+    }
+    .session-label-display {
+      font-size: 12px;
+      color: var(--latte);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 1.25rem;
+    }
+
+    .controls {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 1.5rem;
+    }
+    .ctrl-btn {
+      width: 42px; height: 42px;
+      border-radius: 50%;
+      border: 1px solid var(--steam);
+      background: var(--cream);
+      color: var(--espresso);
+      font-size: 15px;
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      transition: all 0.15s;
+    }
+    .ctrl-btn:hover { background: var(--steam); }
+    .play-btn {
+      width: 56px; height: 56px;
+      background: var(--mocha);
+      color: var(--cream);
+      border: none;
+      font-size: 20px;
+    }
+    .play-btn:hover { background: var(--espresso); }
+
+    .label-row {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 1.25rem;
+    }
+    .label-input {
+      flex: 1;
+      padding: 9px 12px;
+      font-size: 13px;
+      border: 1px solid var(--steam);
+      border-radius: var(--radius);
+      background: var(--cream);
+      color: var(--espresso);
+      font-family: var(--font-sans);
+      outline: none;
+    }
+    .label-input:focus { border-color: var(--caramel); }
+
+    .dots-row {
+      display: flex;
+      gap: 6px;
+      justify-content: center;
+      margin-bottom: 1.25rem;
+    }
+    .dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: var(--steam);
+      transition: background 0.2s;
+    }
+    .dot.filled { background: var(--caramel); }
+
+    .stats-row {
+      display: flex;
+      gap: 8px;
+    }
+    .stat-card {
+      flex: 1;
+      background: var(--cream);
+      border-radius: var(--radius);
+      border: 1px solid var(--steam);
+      padding: 10px 12px;
+      text-align: center;
+    }
+    .stat-val { font-size: 20px; font-weight: 500; color: var(--mocha); }
+    .stat-lbl { font-size: 11px; color: var(--latte); margin-top: 2px; }
+
+    /* ===== ALARM ===== */
+    .clock-display-wrap { text-align: center; margin-bottom: 1.5rem; }
+    #clock-display {
+      font-size: 48px;
+      font-weight: 300;
+      color: var(--mocha);
+      font-variant-numeric: tabular-nums;
+      letter-spacing: -2px;
+    }
+    #clock-ampm {
+      font-size: 18px;
+      font-weight: 500;
+      color: var(--caramel);
+      margin-left: 6px;
+      vertical-align: super;
+    }
+    #date-display { font-size: 13px; color: var(--latte); margin-top: 4px; }
+
+    .alarm-set-card {
+      background: var(--cream);
+      border-radius: var(--radius);
+      border: 1px solid var(--steam);
+      padding: 1.25rem;
+      margin-bottom: 1.25rem;
+    }
+    .alarm-set-title { font-size: 13px; font-weight: 500; color: var(--espresso); margin-bottom: 1rem; }
+
+    .picker-row {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      margin-bottom: 1rem;
+    }
+    .picker {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+    }
+    .picker-val {
+      font-size: 32px;
+      font-weight: 300;
+      color: var(--mocha);
+      font-variant-numeric: tabular-nums;
+      width: 70px;
+      text-align: center;
+    }
+    .picker-arrow {
+      background: none;
+      border: none;
+      color: var(--caramel);
+      font-size: 18px;
+      cursor: pointer;
+      padding: 4px 12px;
+      border-radius: 6px;
+    }
+    .picker-arrow:hover { background: var(--steam); }
+    .picker-sep { font-size: 28px; font-weight: 300; color: var(--latte); margin: 0 4px; }
+
+    .ampm-toggle {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      margin-left: 8px;
+    }
+    .ampm-btn {
+      padding: 6px 10px;
+      font-size: 12px;
+      font-weight: 500;
+      border-radius: 6px;
+      border: 1px solid var(--steam);
+      background: var(--cream);
+      color: var(--latte);
+      cursor: pointer;
+      font-family: var(--font-sans);
+    }
+    .ampm-btn.active {
+      background: var(--mocha);
+      color: var(--cream);
+      border-color: var(--mocha);
+    }
+
+    .presets {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+      margin-bottom: 1rem;
+    }
+    .preset-btn {
+      padding: 6px 10px;
+      font-size: 12px;
+      border-radius: 6px;
+      border: 1px solid var(--steam);
+      background: var(--cream);
+      color: var(--espresso);
+      cursor: pointer;
+      font-family: var(--font-sans);
+    }
+    .preset-btn:hover { background: var(--steam); }
+
+    .alarm-name-input {
+      width: 100%;
+      padding: 9px 12px;
+      font-size: 13px;
+      border: 1px solid var(--steam);
+      border-radius: var(--radius);
+      background: var(--foam);
+      color: var(--espresso);
+      font-family: var(--font-sans);
+      outline: none;
+      margin-bottom: 0.75rem;
+    }
+    .alarm-name-input:focus { border-color: var(--caramel); }
+
+    .set-alarm-btn {
+      width: 100%;
+      padding: 12px;
+      font-size: 14px;
+      font-weight: 500;
+      border-radius: var(--radius);
+      border: none;
+      background: var(--mocha);
+      color: var(--cream);
+      cursor: pointer;
+      font-family: var(--font-sans);
+      letter-spacing: 0.3px;
+      transition: background 0.15s;
+    }
+    .set-alarm-btn:hover { background: var(--espresso); }
+
+    .alarm-list-label {
+      font-size: 11px;
+      color: var(--latte);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 8px;
+    }
+    .alarm-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px;
+      background: var(--cream);
+      border-radius: var(--radius);
+      margin-bottom: 8px;
+      border: 0.5px solid var(--steam);
+    }
+    .alarm-item-time {
+      font-size: 19px;
+      font-weight: 500;
+      color: var(--mocha);
+      min-width: 95px;
+      font-variant-numeric: tabular-nums;
+    }
+    .alarm-item-info { flex: 1; }
+    .alarm-item-name { font-size: 13px; color: var(--latte); }
+    .alarm-countdown { font-size: 12px; color: var(--leaflight); margin-top: 2px; }
+    .alarm-del {
+      background: none;
+      border: none;
+      color: var(--caramel);
+      cursor: pointer;
+      font-size: 17px;
+      padding: 4px 6px;
+      border-radius: 4px;
+    }
+    .alarm-del:hover { color: var(--mocha); background: var(--steam); }
+
+    /* Ringing overlay */
+    .ring-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(59,35,20,0.7);
+      z-index: 100;
+      align-items: center;
+      justify-content: center;
+    }
+    .ring-overlay.active { display: flex; }
+    .ring-card {
+      background: var(--foam);
+      border-radius: 20px;
+      padding: 2.5rem 2rem;
+      text-align: center;
+      max-width: 320px;
+      width: 90%;
+    }
+    .ring-icon { font-size: 48px; margin-bottom: 1rem; }
+    .ring-title { font-size: 22px; font-weight: 500; color: var(--mocha); margin-bottom: 0.4rem; }
+    .ring-sub { font-size: 14px; color: var(--latte); margin-bottom: 1.5rem; }
+    .ring-btns { display: flex; gap: 10px; }
+    .ring-btns button {
+      flex: 1;
+      padding: 12px;
+      border-radius: var(--radius);
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      border: 1px solid var(--steam);
+      background: var(--cream);
+      color: var(--espresso);
+      font-family: var(--font-sans);
+    }
+    .ring-btns .stop-btn {
+      background: var(--mocha);
+      color: var(--cream);
+      border-color: var(--mocha);
+    }
+    .ring-btns .stop-btn:hover { background: var(--espresso); }
+  </style>
+</head>
+<body>
+<div class="app">
+  <!-- Header -->
+  <div class="header">
+    <svg class="header-icon" viewBox="0 0 44 44" xmlns="http://www.w3.org/2000/svg">
+      <!-- Steam wisps -->
+      <g class="steam-path1">
+        <path d="M18 11 Q15 8 18 5 Q21 2 18 -1" fill="none" stroke="#D4904E" stroke-width="1.5" stroke-linecap="round"/>
+      </g>
+      <g class="steam-path2">
+        <path d="M22 10 Q19 7 22 4 Q25 1 22 -2" fill="none" stroke="#D4904E" stroke-width="1.8" stroke-linecap="round"/>
+      </g>
+      <g class="steam-path3">
+        <path d="M26 11 Q29 8 26 5 Q23 2 26 -1" fill="none" stroke="#D4904E" stroke-width="1.4" stroke-linecap="round"/>
+      </g>
+      <!-- Saucer -->
+      <ellipse cx="22" cy="40" rx="16" ry="3" fill="#C8B8A2"/>
+      <ellipse cx="22" cy="39" rx="14" ry="2" fill="#E8DDD0"/>
+      <!-- Cup body -->
+      <path d="M9 16 Q8 34 11 37 Q22 40 33 37 Q36 34 35 16 Z" fill="#D6C9B8"/>
+      <path d="M11 16 Q10 32 13 36 Q22 39 31 36 Q34 32 33 16 Z" fill="#F5EDE3"/>
+      <!-- Coffee inside (visible below rim) -->
+      <ellipse cx="22" cy="19" rx="11" ry="2.5" fill="#5C3317"/>
+      <ellipse cx="22" cy="19" rx="9" ry="1.8" fill="#7A4520"/>
+      <ellipse cx="20" cy="18.5" rx="3" ry="0.8" fill="#A0622A" opacity="0.6"/>
+      <!-- Cup rim -->
+      <path d="M9 16 Q9.5 13 22 12.5 Q34.5 13 35 16 Q34.5 19 22 19.5 Q9.5 19 9 16 Z" fill="#EDE0D4"/>
+      <!-- Rim shadow line -->
+      <path d="M9.5 16.5 Q10 18.5 22 19 Q34 18.5 34.5 16.5" fill="none" stroke="#C8B8A2" stroke-width="0.8"/>
+      <!-- Handle -->
+      <path d="M33 22 Q40 22 40 29 Q40 36 33 36" fill="none" stroke="#C8B8A2" stroke-width="3.5" stroke-linecap="round"/>
+      <path d="M33 22 Q38 22 38 29 Q38 36 33 36" fill="none" stroke="#F5EDE3" stroke-width="1.8" stroke-linecap="round"/>
+    </svg>
+    <div>
+      <div class="header-title">Focus Café</div>
+      <div class="header-sub">Pomodoro timer &amp; alarm clock</div>
+    </div>
+  </div>
+
+  <!-- Plant Strip -->
+  <div class="plant-strip">
+    <svg width="100%" height="54" viewBox="0 0 480 54" preserveAspectRatio="xMidYMax meet" xmlns="http://www.w3.org/2000/svg">
+      <!-- Plant 1 -->
+      <ellipse cx="30" cy="20" rx="12" ry="18" fill="#4A7C59" transform="rotate(-15,30,20)"/>
+      <ellipse cx="22" cy="28" rx="10" ry="14" fill="#3D6B4A" transform="rotate(10,22,28)"/>
+      <rect x="27" y="38" width="6" height="16" rx="2" fill="#6B4226"/>
+      <!-- Plant 2 -->
+      <ellipse cx="90" cy="14" rx="14" ry="20" fill="#6FAE80" transform="rotate(-8,90,14)"/>
+      <ellipse cx="80" cy="22" rx="12" ry="16" fill="#4A7C59" transform="rotate(12,80,22)"/>
+      <ellipse cx="100" cy="24" rx="10" ry="14" fill="#5A9068" transform="rotate(-5,100,24)"/>
+      <rect x="87" y="40" width="6" height="14" rx="2" fill="#6B4226"/>
+      <!-- Plant 3 -->
+      <ellipse cx="160" cy="18" rx="10" ry="16" fill="#3D6B4A" transform="rotate(20,160,18)"/>
+      <ellipse cx="170" cy="22" rx="12" ry="15" fill="#4A7C59" transform="rotate(-10,170,22)"/>
+      <rect x="160" y="38" width="5" height="16" rx="2" fill="#5C3317"/>
+      <!-- Plant 4 -->
+      <ellipse cx="240" cy="12" rx="16" ry="22" fill="#6FAE80" transform="rotate(-5,240,12)"/>
+      <ellipse cx="228" cy="20" rx="13" ry="17" fill="#4A7C59" transform="rotate(8,228,20)"/>
+      <ellipse cx="252" cy="18" rx="12" ry="16" fill="#5A9068" transform="rotate(-12,252,18)"/>
+      <rect x="237" y="38" width="6" height="16" rx="2" fill="#6B4226"/>
+      <!-- Plant 5 -->
+      <ellipse cx="320" cy="16" rx="11" ry="18" fill="#4A7C59" transform="rotate(10,320,16)"/>
+      <ellipse cx="310" cy="24" rx="10" ry="14" fill="#3D6B4A" transform="rotate(-15,310,24)"/>
+      <rect x="316" y="38" width="5" height="16" rx="2" fill="#5C3317"/>
+      <!-- Plant 6 -->
+      <ellipse cx="390" cy="14" rx="14" ry="20" fill="#6FAE80" transform="rotate(-8,390,14)"/>
+      <ellipse cx="378" cy="22" rx="11" ry="15" fill="#4A7C59" transform="rotate(10,378,22)"/>
+      <ellipse cx="402" cy="22" rx="12" ry="16" fill="#5A9068" transform="rotate(-6,402,22)"/>
+      <rect x="387" y="40" width="6" height="14" rx="2" fill="#6B4226"/>
+      <!-- Plant 7 -->
+      <ellipse cx="455" cy="20" rx="10" ry="15" fill="#3D6B4A" transform="rotate(15,455,20)"/>
+      <ellipse cx="465" cy="24" rx="10" ry="14" fill="#4A7C59" transform="rotate(-10,465,24)"/>
+      <rect x="453" y="38" width="5" height="16" rx="2" fill="#5C3317"/>
+    </svg>
+  </div>
+
+  <!-- Tabs -->
+  <div class="tabs">
+    <button class="tab-btn active" onclick="switchTab('pomodoro')">🍅 Pomodoro</button>
+    <button class="tab-btn" onclick="switchTab('alarm')">⏰ Alarm</button>
+  </div>
+
+  <!-- Pomodoro Tab -->
+  <div id="tab-pomodoro" class="tab-content active">
+    <div class="mode-btns">
+      <button class="mode-btn active" onclick="setMode('focus')">Focus</button>
+      <button class="mode-btn" onclick="setMode('short')">Short Break</button>
+      <button class="mode-btn" onclick="setMode('long')">Long Break</button>
+    </div>
+
+    <div class="timer-wrap" style="display:flex; align-items:center; justify-content:center; margin-bottom:0;">
+      <svg class="ring-svg" width="200" height="200" viewBox="0 0 200 200">
+        <circle class="ring-track" cx="100" cy="100" r="88"/>
+        <circle class="ring-prog" id="ring-prog" cx="100" cy="100" r="88"
+          stroke-dasharray="552.9" stroke-dashoffset="0"/>
+      </svg>
+      <div class="timer-display" id="timer-display">25:00</div>
+
+      <!-- Stirring cup shown when running -->
+      <div class="stir-cup-wrap" id="stir-cup-wrap">
+        <svg class="stir-svg" width="60" height="68" viewBox="0 0 44 52">
+          <!-- Steam -->
+          <g class="stir-steam1">
+            <path d="M16 9 Q13 6 16 3 Q19 0 16 -3" fill="none" stroke="#D4904E" stroke-width="1.3" stroke-linecap="round"/>
+          </g>
+          <g class="stir-steam2">
+            <path d="M22 8 Q19 5 22 2 Q25 -1 22 -4" fill="none" stroke="#D4904E" stroke-width="1.5" stroke-linecap="round"/>
+          </g>
+          <g class="stir-steam3">
+            <path d="M28 9 Q31 6 28 3 Q25 0 28 -3" fill="none" stroke="#D4904E" stroke-width="1.2" stroke-linecap="round"/>
+          </g>
+          <!-- Saucer -->
+          <ellipse cx="22" cy="46" rx="16" ry="3" fill="#C8B8A2"/>
+          <ellipse cx="22" cy="45" rx="14" ry="2" fill="#E8DDD0"/>
+          <!-- Cup body -->
+          <path d="M9 18 Q8 38 11 41 Q22 44 33 41 Q36 38 35 18 Z" fill="#D6C9B8"/>
+          <path d="M11 18 Q10 36 13 40 Q22 43 31 40 Q34 36 33 18 Z" fill="#F5EDE3"/>
+          <!-- Coffee surface with ripples -->
+          <ellipse cx="22" cy="21" rx="11" ry="2.2" fill="#5C3317"/>
+          <ellipse cx="22" cy="21" rx="9" ry="1.6" fill="#7A4520"/>
+          <!-- Ripple lines -->
+          <ellipse class="ripple1" cx="22" cy="21" rx="6" ry="0.9" fill="none" stroke="#A0622A" stroke-width="0.8"/>
+          <ellipse class="ripple2" cx="22" cy="23" rx="4" ry="0.6" fill="none" stroke="#A0622A" stroke-width="0.6"/>
+          <!-- Cup rim -->
+          <path d="M9 18 Q9.5 15 22 14.5 Q34.5 15 35 18 Q34.5 21 22 21.5 Q9.5 21 9 18 Z" fill="#EDE0D4"/>
+          <!-- Handle -->
+          <path d="M33 25 Q40 25 40 32 Q40 39 33 39" fill="none" stroke="#C8B8A2" stroke-width="3.5" stroke-linecap="round"/>
+          <path d="M33 25 Q38 25 38 32 Q38 39 33 39" fill="none" stroke="#F5EDE3" stroke-width="1.8" stroke-linecap="round"/>
+          <!-- Spoon (animated) -->
+          <g class="spoon-group">
+            <!-- Spoon handle -->
+            <rect x="21" y="4" width="2.5" height="22" rx="1.2" fill="#C0A882"/>
+            <!-- Spoon bowl -->
+            <ellipse cx="22.2" cy="27" rx="3.5" ry="2" fill="#D4BC9A"/>
+            <ellipse cx="22.2" cy="27" rx="2.5" ry="1.3" fill="#5C3317" opacity="0.6"/>
+          </g>
+        </svg>
+        <div class="stir-label">Brewing…</div>
+      </div>
+    </div>
+
+    <div class="session-label-display" id="session-label-display">Focus Session</div>
+
+    <div class="controls">
+      <button class="ctrl-btn" onclick="resetTimer()" title="Reset">↺</button>
+      <button class="ctrl-btn play-btn" id="play-btn" onclick="toggleTimer()">▶</button>
+      <button class="ctrl-btn" onclick="skipTimer()" title="Skip">⏭</button>
+    </div>
+
+    <div class="label-row">
+      <input class="label-input" id="label-input" type="text" placeholder="Session label (e.g. Deep Work)"/>
+    </div>
+
+    <div class="dots-row" id="dots-row">
+      <div class="dot" id="dot-0"></div>
+      <div class="dot" id="dot-1"></div>
+      <div class="dot" id="dot-2"></div>
+      <div class="dot" id="dot-3"></div>
+    </div>
+
+    <div class="stats-row">
+      <div class="stat-card">
+        <div class="stat-val" id="stat-sessions">0</div>
+        <div class="stat-lbl">Sessions</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-val" id="stat-focus">0m</div>
+        <div class="stat-lbl">Focus Time</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-val" id="stat-breaks">0</div>
+        <div class="stat-lbl">Breaks</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Alarm Tab -->
+  <div id="tab-alarm" class="tab-content">
+    <div class="clock-display-wrap">
+      <span id="clock-display">12:00:00</span><span id="clock-ampm">AM</span>
+      <div id="date-display"></div>
+    </div>
+
+    <div class="alarm-set-card">
+      <div class="alarm-set-title">Set Alarm</div>
+      <div class="picker-row">
+        <div class="picker">
+          <button class="picker-arrow" onclick="adjustPicker('h',1)">▲</button>
+          <div class="picker-val" id="pick-h">12</div>
+          <button class="picker-arrow" onclick="adjustPicker('h',-1)">▼</button>
+        </div>
+        <span class="picker-sep">:</span>
+        <div class="picker">
+          <button class="picker-arrow" onclick="adjustPicker('m',1)">▲</button>
+          <div class="picker-val" id="pick-m">00</div>
+          <button class="picker-arrow" onclick="adjustPicker('m',-1)">▼</button>
+        </div>
+        <div class="ampm-toggle">
+          <button class="ampm-btn active" id="ampm-am" onclick="setAmPm('AM')">AM</button>
+          <button class="ampm-btn" id="ampm-pm" onclick="setAmPm('PM')">PM</button>
+        </div>
+      </div>
+
+      <div class="presets">
+        <button class="preset-btn" onclick="setPreset(6,0,'AM')">6:00 AM</button>
+        <button class="preset-btn" onclick="setPreset(7,0,'AM')">7:00 AM</button>
+        <button class="preset-btn" onclick="setPreset(8,30,'AM')">8:30 AM</button>
+        <button class="preset-btn" onclick="setPreset(9,0,'AM')">9:00 AM</button>
+        <button class="preset-btn" onclick="setPreset(12,0,'PM')">12:00 PM</button>
+        <button class="preset-btn" onclick="setPreset(5,0,'PM')">5:00 PM</button>
+      </div>
+
+      <input class="alarm-name-input" id="alarm-name" type="text" placeholder="Alarm name (optional)"/>
+      <button class="set-alarm-btn" onclick="setAlarm()">Set Alarm</button>
+    </div>
+
+    <div class="alarm-list-label">Active Alarms</div>
+    <div id="alarm-list"></div>
+  </div>
+</div>
+
+<!-- Ringing Overlay -->
+<div class="ring-overlay" id="ring-overlay">
+  <div class="ring-card">
+    <div class="ring-icon">☕</div>
+    <div class="ring-title" id="ring-alarm-name">Time to wake up!</div>
+    <div class="ring-sub" id="ring-alarm-time">—</div>
+    <div class="ring-btns">
+      <button onclick="snoozeAlarm()">Snooze 5m</button>
+      <button class="stop-btn" onclick="stopAlarm()">Stop</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  // ── Pomodoro ──
+  const MODES = { focus: 25*60, short: 5*60, long: 15*60 };
+  const MODE_LABELS = { focus: 'Focus Session', short: 'Short Break', long: 'Long Break' };
+  const CIRCUMFERENCE = 2 * Math.PI * 88;
+
+  let mode = 'focus';
+  let totalSecs = MODES.focus;
+  let secsLeft = totalSecs;
+  let running = false;
+  let interval = null;
+  let sessionsDone = 0;
+  let focusMins = 0;
+  let breaksDone = 0;
+  let dotCount = 0;
+
+  function fmtTime(s) {
+    return String(Math.floor(s / 60)).padStart(2,'0') + ':' + String(s % 60).padStart(2,'0');
+  }
+
+  function updateTimerUI() {
+    document.getElementById('timer-display').textContent = fmtTime(secsLeft);
+    const prog = 1 - (secsLeft / totalSecs);
+    document.getElementById('ring-prog').style.strokeDashoffset = CIRCUMFERENCE * (1 - prog);
+    document.getElementById('session-label-display').textContent =
+      document.getElementById('label-input').value || MODE_LABELS[mode];
+  }
+
+  function updateStats() {
+    document.getElementById('stat-sessions').textContent = sessionsDone;
+    document.getElementById('stat-focus').textContent = focusMins + 'm';
+    document.getElementById('stat-breaks').textContent = breaksDone;
+  }
+
+  function updateDots() {
+    for (let i = 0; i < 4; i++) {
+      document.getElementById('dot-' + i).className = 'dot' + (i < dotCount ? ' filled' : '');
+    }
+  }
+
+  function setMode(m) {
+    mode = m;
+    totalSecs = MODES[m];
+    secsLeft = totalSecs;
+    clearInterval(interval);
+    running = false;
+    document.getElementById('play-btn').textContent = '▶';
+    document.querySelectorAll('.mode-btn').forEach((b, i) => {
+      b.classList.toggle('active', ['focus','short','long'][i] === m);
+    });
+    updateTimerUI();
+  }
+
+  function toggleTimer() {
+    if (running) {
+      clearInterval(interval);
+      running = false;
+      document.getElementById('play-btn').textContent = '▶';
+      document.getElementById('stir-cup-wrap').classList.remove('active');
+    } else {
+      running = true;
+      document.getElementById('play-btn').textContent = '⏸';
+      document.getElementById('stir-cup-wrap').classList.add('active');
+      interval = setInterval(() => {
+        secsLeft--;
+        if (secsLeft <= 0) {
+          clearInterval(interval);
+          running = false;
+          document.getElementById('play-btn').textContent = '▶';
+          document.getElementById('stir-cup-wrap').classList.remove('active');
+          handleTimerEnd();
+        }
+        updateTimerUI();
+      }, 1000);
+    }
+  }
+
+  function handleTimerEnd() {
+    if (mode === 'focus') {
+      sessionsDone++;
+      focusMins += 25;
+      dotCount = (dotCount + 1) % 5;
+      if (dotCount === 0) breaksDone++;
+    } else {
+      breaksDone++;
+    }
+    updateStats();
+    updateDots();
+    playBeep(3);
+    setTimeout(() => setMode(mode === 'focus' ? (dotCount === 0 ? 'long' : 'short') : 'focus'), 500);
+  }
+
+  function resetTimer() {
+    clearInterval(interval);
+    running = false;
+    secsLeft = totalSecs;
+    document.getElementById('play-btn').textContent = '▶';
+    document.getElementById('stir-cup-wrap').classList.remove('active');
+    updateTimerUI();
+  }
+
+  function skipTimer() {
+    clearInterval(interval);
+    running = false;
+    secsLeft = 0;
+    document.getElementById('play-btn').textContent = '▶';
+    document.getElementById('stir-cup-wrap').classList.remove('active');
+    handleTimerEnd();
+  }
+
+  // ── Alarm ──
+  let pickH = 12, pickM = 0, pickAmPm = 'AM';
+  let alarms = [];
+  let ringingAlarm = null;
+  let beepInterval = null;
+
+  function updateClock() {
+    const now = new Date();
+    let h = now.getHours(), m = now.getMinutes(), s = now.getSeconds();
+    const ap = h >= 12 ? 'PM' : 'AM';
+    h = h % 12 || 12;
+    document.getElementById('clock-display').textContent =
+      h + ':' + String(m).padStart(2,'0') + ':' + String(s).padStart(2,'0');
+    document.getElementById('clock-ampm').textContent = ap;
+    const days = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+    const months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+    document.getElementById('date-display').textContent =
+      days[now.getDay()] + ', ' + months[now.getMonth()] + ' ' + now.getDate() + ', ' + now.getFullYear();
+
+    // Check alarms
+    alarms.forEach(alarm => {
+      if (!alarm.fired && alarm.h === now.getHours() && alarm.m === now.getMinutes() && now.getSeconds() === 0) {
+        alarm.fired = true;
+        triggerAlarm(alarm);
+      }
+    });
+    renderAlarms();
+  }
+
+  function adjustPicker(field, dir) {
+    if (field === 'h') {
+      pickH = (pickH - 1 + dir + 12) % 12 + 1;
+      document.getElementById('pick-h').textContent = pickH;
+    } else {
+      pickM = (pickM + dir + 60) % 60;
+      document.getElementById('pick-m').textContent = String(pickM).padStart(2,'0');
+    }
+  }
+
+  function setAmPm(val) {
+    pickAmPm = val;
+    document.getElementById('ampm-am').classList.toggle('active', val === 'AM');
+    document.getElementById('ampm-pm').classList.toggle('active', val === 'PM');
+  }
+
+  function setPreset(h, m, ap) {
+    pickH = h; pickM = m; pickAmPm = ap;
+    document.getElementById('pick-h').textContent = h;
+    document.getElementById('pick-m').textContent = String(m).padStart(2,'0');
+    setAmPm(ap);
+  }
+
+  function to24(h, m, ap) {
+    let h24 = h % 12;
+    if (ap === 'PM') h24 += 12;
+    return { h: h24, m };
+  }
+
+  function setAlarm() {
+    const { h, m } = to24(pickH, pickM, pickAmPm);
+    const name = document.getElementById('alarm-name').value.trim() || 'Alarm';
+    const id = Date.now();
+    alarms.push({ id, h, m, name, displayTime: pickH + ':' + String(pickM).padStart(2,'0') + ' ' + pickAmPm, fired: false });
+    document.getElementById('alarm-name').value = '';
+    renderAlarms();
+  }
+
+  function deleteAlarm(id) {
+    alarms = alarms.filter(a => a.id !== id);
+    renderAlarms();
+  }
+
+  function renderAlarms() {
+    const list = document.getElementById('alarm-list');
+    if (alarms.length === 0) {
+      list.innerHTML = '<div style="font-size:13px;color:var(--latte);text-align:center;padding:1rem 0;">No alarms set</div>';
+      return;
+    }
+    const now = new Date();
+    list.innerHTML = alarms.map(a => {
+      const target = new Date(now);
+      target.setHours(a.h, a.m, 0, 0);
+      if (target <= now) target.setDate(target.getDate() + 1);
+      const diff = Math.floor((target - now) / 1000);
+      const dh = Math.floor(diff / 3600);
+      const dm = Math.floor((diff % 3600) / 60);
+      const countdown = dh > 0 ? `in ${dh}h ${dm}m` : `in ${dm}m`;
+      return `<div class="alarm-item">
+        <div class="alarm-item-time">${a.displayTime}</div>
+        <div class="alarm-item-info">
+          <div class="alarm-item-name">${a.name}</div>
+          <div class="alarm-countdown">${a.fired ? 'Fired' : countdown}</div>
+        </div>
+        <button class="alarm-del" onclick="deleteAlarm(${a.id})">✕</button>
+      </div>`;
+    }).join('');
+  }
+
+  function triggerAlarm(alarm) {
+    ringingAlarm = alarm;
+    document.getElementById('ring-alarm-name').textContent = alarm.name;
+    document.getElementById('ring-alarm-time').textContent = alarm.displayTime;
+    document.getElementById('ring-overlay').classList.add('active');
+    beepInterval = setInterval(() => playBeep(1), 1200);
+  }
+
+  function stopAlarm() {
+    clearInterval(beepInterval);
+    document.getElementById('ring-overlay').classList.remove('active');
+    alarms = alarms.filter(a => a.id !== ringingAlarm?.id);
+    ringingAlarm = null;
+    renderAlarms();
+  }
+
+  function snoozeAlarm() {
+    clearInterval(beepInterval);
+    document.getElementById('ring-overlay').classList.remove('active');
+    if (ringingAlarm) {
+      const snooze = new Date(Date.now() + 5 * 60 * 1000);
+      ringingAlarm.h = snooze.getHours();
+      ringingAlarm.m = snooze.getMinutes();
+      ringingAlarm.fired = false;
+      const ap = ringingAlarm.h >= 12 ? 'PM' : 'AM';
+      const dh = ringingAlarm.h % 12 || 12;
+      ringingAlarm.displayTime = dh + ':' + String(ringingAlarm.m).padStart(2,'0') + ' ' + ap;
+    }
+    ringingAlarm = null;
+    renderAlarms();
+  }
+
+  // ── Audio ──
+  function playBeep(times) {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    for (let i = 0; i < times; i++) {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.frequency.value = 880;
+      osc.type = 'sine';
+      gain.gain.setValueAtTime(0.3, ctx.currentTime + i * 0.35);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + i * 0.35 + 0.28);
+      osc.start(ctx.currentTime + i * 0.35);
+      osc.stop(ctx.currentTime + i * 0.35 + 0.3);
+    }
+  }
+
+  // ── Tab switching ──
+  function switchTab(tab) {
+    document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+    document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+    document.getElementById('tab-' + tab).classList.add('active');
+    event.currentTarget.classList.add('active');
+  }
+
+  // ── Init ──
+  updateTimerUI();
+  updateStats();
+  updateDots();
+  renderAlarms();
+  updateClock();
+  setInterval(updateClock, 1000);
+</script>
+</body>
+</html>
